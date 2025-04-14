@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>로컬 브랜드 Q-Sort</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+    form { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .card { background: #eee; padding: 10px; border-radius: 5px; cursor: grab; margin: 5px 0; font-size: 14px; }
+    .zone { background: #f0f0f0; border: 2px dashed #ccc; padding: 10px; border-radius: 6px; min-height: 100px; width: 160px; }
+    .board { display: flex; gap: 10px; justify-content: center; align-items: end; margin-top: 30px; overflow-x: auto; }
+    .column { display: flex; flex-direction: column; align-items: center; }
+    .zone-label { font-weight: bold; margin-top: 8px; }
+    .source { margin-top: 20px; background: #fff9e6; border: 1px solid #f1c40f; padding: 10px; max-height: 300px; overflow-y: auto; }
+    .submit-section { text-align: center; margin-top: 30px; }
+    button { padding: 10px 20px; background: #007bff; color: white; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; }
+    #thankyou-box { display: none; text-align: center; padding: 40px; }
+  </style>
+</head>
+<body>
+  <form id="qsort-form">
+    <h1>로컬 브랜드 소비자 인식 조사</h1>
+    <label>이름 <input type="text" name="name" required /></label><br/>
+    <label>성별
+      <select name="gender" required>
+        <option value="">선택</option>
+        <option>남성</option><option>여성</option><option>기타</option>
+      </select>
+    </label>
+    <label>연령대
+      <select name="age" required>
+        <option value="">선택</option>
+        <option>20대</option><option>30대</option><option>40대</option><option>50대 이상</option>
+      </select>
+    </label>
+    <label>거주지역 <input type="text" name="region" required /></label><br/>
+    <label>로컬 브랜드 구매 경험
+      <select name="experience" required>
+        <option value="">선택</option>
+        <option>자주 구매함</option><option>가끔 구매함</option><option>거의 없음</option><option>없음</option>
+      </select>
+    </label>
+
+    <div class="source" id="source"><h3>📝 진술문 리스트</h3></div>
+    <div class="board" id="zones"></div>
+
+    <div class="submit-section"><button type="submit">제출</button></div>
+  </form>
+
+  <div id="thankyou-box">
+    <h2>설문에 참여해 주셔서 감사합니다!</h2>
+    <p>응답이 성공적으로 제출되었습니다.</p>
+  </div>
+
+<script>
+const statements = ['지역과 깊이 연결된 배경을 가진 브랜드일수록 더 진정성 있게 느껴진다.', '브랜드 철학이 명확히 전달될 때, 소비자로서 그 진정성에 대한 확신이 생긴다.', '로컬 브랜드의 지역성은 단순한 지역 관광 상품에 불과하다.', '로컬 브랜드의 이야기는 진정성보다는 마케팅 전략 중 하나로 느껴진다.', '나는 따뜻하고 인간적인 분위기와 감성을 지닌 브랜드에 끌리는 편이다.', '브랜드는 나의 가치관과 취향을 표현할 수 있는 수단이라고 생각한다.', '나는 좋아하는 로컬 브랜드가 성장하면 내 일처럼 기쁘게 느껴진다.', '로컬 브랜드 소비는 내 삶과는 동떨어진, 일부 사람들의 문화처럼 느껴진다.', '로컬 브랜드를 구매했어도 특별한 감정은 느끼지 않았다.', '로컬 브랜드 소비는 지역 사회와 지역 경제에 의미 있는 기여라고 느껴진다.', '사회적 책임과 윤리적 가치가 명확 브랜드에 더 큰 신뢰를 느낀다.', '로컬 브랜드 소비에 윤리적 의미를 부여하는 건 과장이라고 생각한다.', '로컬 브랜드를 산다고 지역에 실제로 도움이 되지 않는다고 생각한다.', '브랜드가 지닌 분위기나 세계관이 내 삶과 닮아 있을 때 더욱 눈길이 간다.', '남들과 차별화된 소비 방식에서 만족감을 느끼는 편이다.', '소비는 단순한 구매를 넘어 나의 삶과 정체성을 드러내는 하나의 표현이라고 생각한다.', '로컬 브랜드는 일시적인 유행처럼 보일 때가 있다.', '내게 브랜드는 실용성과 가격이 더 중요하지, 정체성 표현까지 연결되지는 않는다.', '디자인이나 콘셉트의 차별성이 브랜드 선택에 중요한 기준이 된다.', '흔하지 않은 브랜드일수록 나에게 더 특별하게 다가온다.', '로컬 브랜드는 대형 브랜드가 흉내 내기 어려운 고유한 오리지널리티가 느껴진다.', '브랜드 철학에 공감하더라도 품질이 부족하면 구매하지 않는다.', '기능적 측면에서 특별한 장점이 없다면, 로컬 브랜드를 선택할 유인은 크지 않다.'];
+const structure = [["-3",2],["-2",3],["-1",4],["0",5],["+1",4],["+2",3],["+3",2]];
+
+const source = document.getElementById("source");
+const zones = document.getElementById("zones");
+
+statements.forEach((text, i) => {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.draggable = true;
+  card.id = "card-" + i;
+  card.textContent = text;
+  source.appendChild(card);
+});
+
+structure.forEach(([score, count]) => {
+  const col = document.createElement("div");
+  col.className = "column";
+  for (let i = 0; i < count; i++) {
+    const zone = document.createElement("div");
+    zone.className = "zone";
+    zone.dataset.score = score;
+    zone.dataset.limit = 1;
+    col.appendChild(zone);
+  }
+  const label = document.createElement("div");
+  label.className = "zone-label";
+  label.textContent = score;
+  col.appendChild(label);
+  zones.appendChild(col);
+});
+
+document.querySelectorAll('.zone').forEach(zone => {
+  zone.addEventListener('dragover', e => e.preventDefault());
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    const cardId = e.dataTransfer.getData('text/plain');
+    const card = document.getElementById(cardId);
+    if (!zone.contains(card) && zone.querySelectorAll('.card').length < parseInt(zone.dataset.limit)) {
+      zone.appendChild(card);
+    }
+  });
+});
+document.addEventListener("dragstart", e => {
+  if (e.target.classList.contains("card")) {
+    e.dataTransfer.setData("text/plain", e.target.id);
+  }
+});
+
+document.getElementById("qsort-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((v, k) => data[k] = v);
+
+  const qsort = {"-3": [], "-2": [], "-1": [], "0": [], "+1": [], "+2": [], "+3": []};
+  let total = 0;
+  document.querySelectorAll(".zone").forEach(zone => {
+    const score = zone.dataset.score;
+    const card = zone.querySelector(".card");
+    if (card) {
+      qsort[score].push(card.innerText);
+      total++;
+    }
+  });
+
+  if (total !== 23) {
+    alert("모든 진술문을 정확히 분류해 주세요.");
+    return;
+  }
+
+  const payload = {
+    timestamp: new Date().toISOString(),
+    ...data,
+    ...qsort
+  };
+
+  try {
+    const res = await fetch("https://script.google.com/macros/s/AKfycbzJafZq6v4HCm_vBQJ1uzWhQjob-vx7yMKPnAZlksiqQqRiXJdnb7sUOI2i_XKv6rv_/exec", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      document.getElementById("qsort-form").style.display = "none";
+      document.getElementById("thankyou-box").style.display = "block";
+    } else {
+      alert("서버 오류: 제출 실패");
+    }
+  } catch (err) {
+    alert("제출 중 오류: " + err.message);
+  }
+});
+</script>
+</body>
+</html>
